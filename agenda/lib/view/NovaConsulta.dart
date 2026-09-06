@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agenda/view/home_screen.dart';
 
 class NovaConsulta extends StatefulWidget {
   const NovaConsulta({super.key});
@@ -30,7 +31,7 @@ class _NovaConsultaState extends State<NovaConsulta> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () {
-            // Ação de voltar
+            Navigator.pop(context);
           },
         ),
         title: const Text(
@@ -106,6 +107,11 @@ class _NovaConsultaState extends State<NovaConsulta> {
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.black54,
         showUnselectedLabels: true,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pop(context);
+          }
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Consultas'),

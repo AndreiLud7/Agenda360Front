@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:agenda/view/NovaConsulta.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -111,6 +111,14 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.black54,
         showUnselectedLabels: true,
+        onTap: (index) {
+          if (index == 1) { // O índice 1 corresponde ao segundo ícone ("Consultas")
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NovaConsulta()),
+            );
+          }
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Consultas'),

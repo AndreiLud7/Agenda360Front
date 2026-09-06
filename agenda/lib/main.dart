@@ -18,7 +18,7 @@ class MeuApp extends StatelessWidget {
         primaryColor: const Color(0xFF0D6EFD),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),x
+      home: const HomeScreen(),
     );
   }
 }
