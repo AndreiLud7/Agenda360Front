@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agenda/view/home_screen.dart';
+import 'package:agenda/services/consulta_service.dart';
 
 class NovaConsulta extends StatefulWidget {
   const NovaConsulta({super.key});
@@ -16,6 +17,8 @@ class _NovaConsultaState extends State<NovaConsulta> {
   final _horarioController = TextEditingController(text: '12:00');
   final _valorController = TextEditingController();
   final _motivoController = TextEditingController();
+  final ConsultaService _consultaService = ConsultaService();
+  bool _isSaving = false;
 
   // Estado dos Radio Buttons
   String _comoConheceu = 'Instagram';
@@ -84,17 +87,44 @@ class _NovaConsultaState extends State<NovaConsulta> {
             const SizedBox(height: 24),
             Align(
               alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Aqui no futuro chamaremos o Service para conectar com a API
-                  print("Botão salvar clicado");
+              child: _isSaving
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                onPressed: () async {
+                  setState(() { _isSaving = true; }); // Mostra carregamento
+
+                  // Pega os dados preenchidos
+                  final dados = {
+                    'nomePaciente': _nomeController.text,
+                    'telefonePaciente': _telefoneController.text,
+                    'comoConheceu': 'INSTAGRAM',
+                    'tipo': 'CONSULTA',
+                    'local': 'GASPAR',
+                    'descricaoLocal': '',
+                    'dataHora': '2026-09-07T14:30:00',
+                    'valor': double.tryParse(_valorController.text.replaceAll(',', '.')) ?? 0.0,
+                    'motivoContato': _motivoController.text,
+                    'status': 'CONSULTA_MARCADA',
+                  };
+                  // Manda pro Java
+                  final sucesso = await _consultaService.salvarConsulta(dados);
+                  setState(() { _isSaving = false; }); // Esconde carregamento
+
+                  if (sucesso) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Salvo com sucesso!'), backgroundColor: Colors.green),
+                    );
+                    Navigator.pop(context); // Volta pra Home
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Erro ao salvar.'), backgroundColor: Colors.red),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0D6EFD),
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Text('Salvar', style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
