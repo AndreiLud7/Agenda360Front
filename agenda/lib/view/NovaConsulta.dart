@@ -92,16 +92,22 @@ class _NovaConsultaState extends State<NovaConsulta> {
                   : ElevatedButton(
                 onPressed: () async {
                   setState(() { _isSaving = true; }); // Mostra carregamento
+                  String horario = _horarioController.text.trim();
+                  if (horario.isEmpty) horario = "12:00";
 
-                  // Pega os dados preenchidos
                   final dados = {
                     'nomePaciente': _nomeController.text,
                     'telefonePaciente': _telefoneController.text,
                     'comoConheceu': 'INSTAGRAM',
                     'tipo': 'CONSULTA',
-                    'local': 'GASPAR',
+
+                    // Força a palavra 'gaspar' a virar 'GASPAR' para não quebrar o Enum do Java
+                    'local': _localController.text.toUpperCase(),
                     'descricaoLocal': '',
-                    'dataHora': '2026-09-07T14:30:00',
+
+                    // Monta a string ISO 8601: Ano-Mês-Dia T Horário : Segundos
+                    'dataHora': '2026-04-03T$horario:00',
+
                     'valor': double.tryParse(_valorController.text.replaceAll(',', '.')) ?? 0.0,
                     'motivoContato': _motivoController.text,
                     'status': 'CONSULTA_MARCADA',
