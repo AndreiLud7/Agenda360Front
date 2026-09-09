@@ -10,7 +10,6 @@ class NovaConsulta extends StatefulWidget {
 }
 
 class _NovaConsultaState extends State<NovaConsulta> {
-  // Controladores para capturar os textos no futuro
   final _nomeController = TextEditingController();
   final _telefoneController = TextEditingController();
   final _localController = TextEditingController();
@@ -20,7 +19,6 @@ class _NovaConsultaState extends State<NovaConsulta> {
   final ConsultaService _consultaService = ConsultaService();
   bool _isSaving = false;
 
-  // Estado dos Radio Buttons
   String _comoConheceu = 'Instagram';
   String _tipo = 'Terapia';
 
@@ -91,7 +89,7 @@ class _NovaConsultaState extends State<NovaConsulta> {
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                 onPressed: () async {
-                  setState(() { _isSaving = true; }); // Mostra carregamento
+                  setState(() { _isSaving = true; });
                   String horario = _horarioController.text.trim();
                   if (horario.isEmpty) horario = "12:00";
 
@@ -101,26 +99,24 @@ class _NovaConsultaState extends State<NovaConsulta> {
                     'comoConheceu': 'INSTAGRAM',
                     'tipo': 'CONSULTA',
 
-                    // Força a palavra 'gaspar' a virar 'GASPAR' para não quebrar o Enum do Java
                     'local': _localController.text.toUpperCase(),
                     'descricaoLocal': '',
 
-                    // Monta a string ISO 8601: Ano-Mês-Dia T Horário : Segundos
+
                     'dataHora': '2026-04-03T$horario:00',
 
                     'valor': double.tryParse(_valorController.text.replaceAll(',', '.')) ?? 0.0,
                     'motivoContato': _motivoController.text,
                     'status': 'CONSULTA_MARCADA',
                   };
-                  // Manda pro Java
                   final sucesso = await _consultaService.salvarConsulta(dados);
-                  setState(() { _isSaving = false; }); // Esconde carregamento
+                  setState(() { _isSaving = false; });
 
                   if (sucesso) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Salvo com sucesso!'), backgroundColor: Colors.green),
                     );
-                    Navigator.pop(context); // Volta pra Home
+                    Navigator.pop(context);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Erro ao salvar.'), backgroundColor: Colors.red),
