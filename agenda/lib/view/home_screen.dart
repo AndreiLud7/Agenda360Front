@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agenda/view/NovaConsulta.dart';
+import 'package:agenda/services/consulta_service.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -10,14 +11,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   DateTime _dataSelecionada = DateTime.now();
 
-  // Dados simulados. Futuramente, sua API Java retornará uma lista parecida com esta
-  // baseada na _dataSelecionada.
-  final List<Map<String, dynamic>> _consultasDoDia = [
-    {'horario': '14:00', 'nome': 'João Silva', 'tipo': 'Consulta'},
-    {'horario': '15:30', 'nome': 'Bernado', 'tipo': 'Terapia'},
-  ];
 
-  // Função para abrir o calendário e filtrar o dia
+  final _consultaService = ConsultaService();
+
   Future<void> _escolherData(BuildContext context) async {
     final DateTime? dataEscolhida = await showDatePicker(
       context: context,
@@ -28,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF0D6EFD), // Cor azul do seu app no calendário
+              primary: Color(0xFF0D6EFD),
             ),
           ),
           child: child!,
@@ -39,13 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (dataEscolhida != null && dataEscolhida != _dataSelecionada) {
       setState(() {
         _dataSelecionada = dataEscolhida;
-        // FUTURO: Aqui você chamará o ConsultaService para buscar os dados do novo dia
-        // ex: carregarConsultas(dataEscolhida);
       });
     }
   }
 
-  // Formatação simples para exibir "Sexta - 03/04" sem precisar de pacotes extras
   String _formatarDataVisor(DateTime data) {
     const List<String> diasSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
     String diaNome = diasSemana[data.weekday - 1];
@@ -65,7 +58,6 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 32),
-              // Cabeçalho com o Filtro de Data
               Center(
                 child: InkWell(
                   onTap: () => _escolherData(context),
@@ -90,14 +82,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Lista de Consultas do Dia
               Expanded(
-                child: ListView.separated(
-                  itemCount: _consultasDoDia.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 32),
-                  itemBuilder: (context, index) {
-                    final consulta = _consultasDoDia[index];
-                    return _buildCardConsulta(consulta);
+                child: FutureBuilder<List<dynamic>>(
+                  future: _consultaService.buscarConsultas(),
+                  builder: (context, snapshot) {
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFF0D6EFD)));
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Erro: ${snapshot.error}'));
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(child: Text('Nenhuma consulta agendada.', style: TextStyle(fontSize: 18, color: Colors.black54)));
+                    }
+
+                    final listaConsultas = snapshot.data!;
+
+                    return ListView.separated(
+                      itemCount: listaConsultas.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 32),
+                      itemBuilder: (context, index) {
+                        final consulta = listaConsultas[index];
+                        return _buildCardConsulta(consulta);
+                      },
+                    );
                   },
                 ),
               ),
@@ -112,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.black54,
         showUnselectedLabels: true,
         onTap: (index) {
-          if (index == 1) { // O índice 1 corresponde ao segundo ícone ("Consultas")
+          if (index == 1) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const NovaConsulta()),
@@ -130,13 +141,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Componente visual de cada item da lista
-  Widget _buildCardConsulta(Map<String, dynamic> consulta) {
+  Widget _buildCardConsulta(dynamic consulta) {
+
+    // Extrai apenas a hora "12:00" do formato gigante "2026-04-03T12:00:00"
+    String dataCompleta = consulta['dataHora'] ?? '';
+    String horario = dataCompleta.length >= 16 ? dataCompleta.substring(11, 16) : '--:--';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          consulta['horario'],
+          horario,
           style: const TextStyle(fontSize: 32, color: Colors.black),
         ),
         const SizedBox(height: 8),
@@ -145,17 +160,17 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Expanded(
               child: Text(
-                '${consulta['nome']} - ${consulta['tipo']}',
+                '${consulta['nomePaciente']} - ${consulta['tipo']}',
                 style: const TextStyle(fontSize: 18, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             ElevatedButton(
               onPressed: () {
-                // Ação para abrir detalhes do paciente
+                // Ação do botão Detalhes
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D6EFD), // Azul
+                backgroundColor: const Color(0xFF0D6EFD),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
