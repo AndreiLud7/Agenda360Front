@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agenda/view/NovaConsulta.dart';
 import 'package:agenda/services/consulta_service.dart';
+import 'package:agenda/view/agenda_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -126,7 +127,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (index == 1) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const NovaConsulta()),
+              // Altere a linha abaixo para chamar o calendário!
+              MaterialPageRoute(builder: (context) => const AgendaScreen()),
             );
           }
         },

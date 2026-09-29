@@ -3,7 +3,11 @@ import 'package:agenda/view/home_screen.dart';
 import 'package:agenda/services/consulta_service.dart';
 
 class NovaConsulta extends StatefulWidget {
-  const NovaConsulta({super.key});
+  // 1. Criamos a variável que vai receber a data da tela anterior
+  final DateTime dataEscolhida;
+
+  // 2. Avisamos que ela é "required" (obrigatória) para abrir a tela
+  const NovaConsulta({super.key, required this.dataEscolhida});
 
   @override
   State<NovaConsulta> createState() => _NovaConsultaState();
@@ -103,7 +107,7 @@ class _NovaConsultaState extends State<NovaConsulta> {
                     'descricaoLocal': '',
 
 
-                    'dataHora': '2026-04-03T$horario:00',
+                    'dataHora': '${widget.dataEscolhida.toIso8601String().substring(0, 10)}T$horario:00',
 
                     'valor': double.tryParse(_valorController.text.replaceAll(',', '.')) ?? 0.0,
                     'motivoContato': _motivoController.text,
