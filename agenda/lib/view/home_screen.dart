@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agenda/view/NovaConsulta.dart';
 import 'package:agenda/services/consulta_service.dart';
+import 'package:agenda/view/detalhes_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -169,7 +170,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                // Ação do botão Detalhes
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DetalhesScreen(consulta: consulta),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0D6EFD),
