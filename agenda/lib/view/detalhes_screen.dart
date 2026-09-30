@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:agenda/view/editar_consulta.dart';
+import 'package:agenda/services/consulta_service.dart'; // Importe o service aqui
 
 class DetalhesScreen extends StatelessWidget {
   final dynamic consulta;
+  // Instanciamos o service para poder usar nos botões
+  final ConsultaService _consultaService = ConsultaService();
 
-  const DetalhesScreen({super.key, required this.consulta});
+  DetalhesScreen({super.key, required this.consulta}); // Tirei o 'const' do construtor pois instanciamos o service acima
 
   String _formatarCabecalho() {
     String dataCompleta = consulta['dataHora'] ?? '';
@@ -42,13 +46,11 @@ class DetalhesScreen extends StatelessWidget {
               Center(
                 child: Text(
                   _formatarCabecalho(),
-                  // Fonte aumentada para 26 e com leve negrito
                   style: const TextStyle(fontSize: 26, color: Colors.black87, fontWeight: FontWeight.w500),
                 ),
               ),
               const SizedBox(height: 36),
 
-              // Fontes aumentadas para 20
               Text('Nome: ${consulta['nomePaciente'] ?? ''}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
               const SizedBox(height: 6),
               Text('Tipo: ${consulta['tipo'] ?? ''}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
@@ -62,14 +64,12 @@ class DetalhesScreen extends StatelessWidget {
 
               const SizedBox(height: 36),
 
-              // Título do motivo com fonte 20 e leve negrito
               const Text('Motivo do contato:', style: TextStyle(fontSize: 20, color: Colors.black87, fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               Text(
                 consulta['motivoContato']?.isNotEmpty == true
                     ? consulta['motivoContato']
                     : 'Nenhum motivo registrado.',
-                // Fonte aumentada para 18
                 style: const TextStyle(fontSize: 18, color: Colors.black54, height: 1.5),
               ),
 
@@ -78,11 +78,50 @@ class DetalhesScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildBotaoAcao('Cancelada', const Color(0xFFDC3545), () {
+                  _buildBotaoAcao('Cancelada', const Color(0xFFDC3545), () async {
+                    final id = consulta['id']; // Pega o ID da consulta
+                    if (id != null) {
+                      final sucesso = await _consultaService.cancelarConsulta(id);
+                      if (sucesso && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Consulta cancelada!'), backgroundColor: Colors.green),
+                        );
+                        Navigator.pop(context, true); // Volta recarregando a lista
+                      } else if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Erro ao cancelar.'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
                   }),
-                  _buildBotaoAcao('Editar', const Color(0xFF0D6EFD), () {
+
+                  _buildBotaoAcao('Editar', const Color(0xFF0D6EFD), () async {
+                    final atualizou = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditarConsulta(consulta: consulta),
+                      ),
+                    );
+                    if (atualizou == true && context.mounted) {
+                      Navigator.pop(context, true);
+                    }
                   }),
-                  _buildBotaoAcao('Finalizada', Colors.black, () {
+
+                  _buildBotaoAcao('Finalizada', Colors.black, () async {
+                    final id = consulta['id']; // Pega o ID da consulta
+                    if (id != null) {
+                      final sucesso = await _consultaService.finalizarConsulta(id);
+                      if (sucesso && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Consulta finalizada!'), backgroundColor: Colors.green),
+                        );
+                        Navigator.pop(context, true); // Volta recarregando a lista
+                      } else if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Erro ao finalizar.'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
                   }),
                 ],
               ),
@@ -102,10 +141,9 @@ class DetalhesScreen extends StatelessWidget {
           onPressed: acao,
           style: ElevatedButton.styleFrom(
             backgroundColor: corFundo,
-            padding: const EdgeInsets.symmetric(vertical: 16), // Botão um pouco mais alto para acomodar a fonte maior
+            padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          // Fonte do botão aumentada para 16 e em negrito
           child: Text(texto, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),

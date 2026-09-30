@@ -3,6 +3,7 @@ import 'package:agenda/view/NovaConsulta.dart';
 import 'package:agenda/services/consulta_service.dart';
 import 'package:agenda/view/detalhes_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -12,9 +13,24 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   DateTime _dataSelecionada = DateTime.now();
-
-
   final _consultaService = ConsultaService();
+
+  // 1. Variável para guardar a requisição
+  late Future<List<dynamic>> _futureConsultas;
+
+  @override
+  void initState() {
+    super.initState();
+    // 2. Carrega as consultas quando a tela abre pela primeira vez
+    _carregarConsultas();
+  }
+
+  // 3. Método para forçar o recarregamento da API
+  void _carregarConsultas() {
+    setState(() {
+      _futureConsultas = _consultaService.buscarConsultas();
+    });
+  }
 
   Future<void> _escolherData(BuildContext context) async {
     final DateTime? dataEscolhida = await showDatePicker(
@@ -38,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _dataSelecionada = dataEscolhida;
       });
+      // Se quiser que ao mudar a data ele recarregue da API, chame aqui:
+      // _carregarConsultas();
     }
   }
 
@@ -86,9 +104,9 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 40),
               Expanded(
                 child: FutureBuilder<List<dynamic>>(
-                  future: _consultaService.buscarConsultas(),
+                  // 4. Usa a variável em vez de chamar direto no build
+                  future: _futureConsultas,
                   builder: (context, snapshot) {
-
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator(color: Color(0xFF0D6EFD)));
                     }
@@ -120,17 +138,18 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: 0, // Destaca a tab "Home"
+        currentIndex: 0,
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.black54,
         showUnselectedLabels: true,
-        onTap: (index) {
+        onTap: (index) async {
           if (index == 1) {
-            Navigator.push(
+            // Se for pra tela de calendário, também usamos o await para atualizar a home na volta
+            await Navigator.push(
               context,
-              // Altere a linha abaixo para chamar o calendário!
               MaterialPageRoute(builder: (context) => const AgendaScreen()),
             );
+            _carregarConsultas();
           }
         },
         items: const [
@@ -145,10 +164,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCardConsulta(dynamic consulta) {
-
-    // Extrai apenas a hora "12:00" do formato gigante "2026-04-03T12:00:00"
     String dataCompleta = consulta['dataHora'] ?? '';
-    String horario = dataCompleta.length >= 16 ? dataCompleta.substring(11, 16) : '--:--';
+    // Corrigido para verificar melhor os tamanhos e o formato do Wrapper (caso esteja usando o response novo)
+    String horario = '--:--';
+    if (dataCompleta.contains('T')) {
+      horario = dataCompleta.split('T')[1].substring(0, 5);
+    } else if (dataCompleta.length >= 16) {
+      horario = dataCompleta.substring(11, 16);
+    }
+
+    // Se estiver usando o Wrapper ConsultaResponse, ajuste para:
+    // String nome = consulta['dados'] != null ? consulta['dados']['nomePaciente'] : consulta['nomePaciente'];
+    // String tipo = consulta['dados'] != null ? consulta['dados']['tipo'] : consulta['tipo'];
+    String nome = consulta['nomePaciente'] ?? '';
+    String tipo = consulta['tipo'] ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,19 +192,25 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Expanded(
               child: Text(
-                '${consulta['nomePaciente']} - ${consulta['tipo']}',
+                '$nome - $tipo',
                 style: const TextStyle(fontSize: 18, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
+              // 5. Adiciona o async e o await aqui
+              onPressed: () async {
+                final resultado = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => DetalhesScreen(consulta: consulta),
                   ),
                 );
+
+                // 6. Se a tela de detalhes retornar true (houve edição/cancelamento), recarrega
+                if (resultado == true) {
+                  _carregarConsultas();
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0D6EFD),
