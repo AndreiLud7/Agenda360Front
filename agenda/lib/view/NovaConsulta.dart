@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agenda/view/home_screen.dart';
 import 'package:agenda/services/consulta_service.dart';
-
 class NovaConsulta extends StatefulWidget {
   // 1. Criamos a variável que vai receber a data da tela anterior
   final DateTime dataEscolhida;
@@ -39,9 +38,9 @@ class _NovaConsultaState extends State<NovaConsulta> {
             Navigator.pop(context);
           },
         ),
-        title: const Text(
-          'Nova consulta - 03/04',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        title: Text(
+          'Nova consulta - ${widget.dataEscolhida.day.toString().padLeft(2, '0')}/${widget.dataEscolhida.month.toString().padLeft(2, '0')}',
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
@@ -120,7 +119,11 @@ class _NovaConsultaState extends State<NovaConsulta> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Salvo com sucesso!'), backgroundColor: Colors.green),
                     );
-                    Navigator.pop(context);
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const HomeScreen()),
+                          (Route<dynamic> route) => false,
+                    );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Erro ao salvar.'), backgroundColor: Colors.red),
