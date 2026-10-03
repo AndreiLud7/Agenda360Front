@@ -32,4 +32,45 @@ class ConsultaService {
       return [];
     }
   }
+
+  Future<bool> editarConsulta(String id, Map<String, dynamic> dados) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/$id'),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode(dados),
+      );
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('Erro de conexão ao editar: $e');
+      return false;
+    }
+  }
+
+  Future<bool> cancelarConsulta(String id) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/cancelar/$id'),
+      );
+      // O Spring Boot devolve 204 NO_CONTENT nas suas rotas PATCH
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      print('Erro de conexão ao cancelar: $e');
+      return false;
+    }
+  }
+
+  Future<bool> finalizarConsulta(String id) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/finalizar/$id'),
+      );
+      // O Spring Boot devolve 204 NO_CONTENT nas suas rotas PATCH
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      print('Erro de conexão ao finalizar: $e');
+      return false;
+    }
+  }
 }
