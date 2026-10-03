@@ -3,6 +3,8 @@ import 'package:agenda/view/NovaConsulta.dart';
 import 'package:agenda/services/consulta_service.dart';
 import 'package:agenda/view/detalhes_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
+
+import 'clientes_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -126,11 +128,10 @@ class _HomeScreenState extends State<HomeScreen> {
         showUnselectedLabels: true,
         onTap: (index) {
           if (index == 1) {
-            Navigator.push(
-              context,
-              // Altere a linha abaixo para chamar o calendário!
-              MaterialPageRoute(builder: (context) => const AgendaScreen()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const AgendaScreen()));
+          } else if (index == 2) {
+            // Adicione esta condição para abrir a tela de Clientes!
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
           }
         },
         items: const [
