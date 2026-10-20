@@ -7,23 +7,49 @@ class DetalhesScreen extends StatelessWidget {
   // Instanciamos o service para poder usar nos botões
   final ConsultaService _consultaService = ConsultaService();
 
-  DetalhesScreen({super.key, required this.consulta}); // Tirei o 'const' do construtor pois instanciamos o service acima
+  DetalhesScreen({super.key, required this.consulta});
+
+  String _formatarLocalOuDescricao() {
+    String local = consulta['local'] ?? 'Local';
+    String descricao = consulta['descricaoLocal'] ?? '';
+
+    // Define qual texto será exibido (Local ou a Descrição se for OUTRO)
+    String textoExibicao = (local.toUpperCase() == 'OUTRO' && descricao.isNotEmpty)
+        ? descricao
+        : local;
+
+    // Formata a primeira letra maiúscula e o resto minúsculo (apenas para cidades)
+    if (textoExibicao == local) {
+      textoExibicao = textoExibicao.isNotEmpty
+          ? textoExibicao[0].toUpperCase() + textoExibicao.substring(1).toLowerCase()
+          : '';
+    }
+
+    // Limita a 15 caracteres e adiciona "..."
+    if (textoExibicao.length > 10) {
+      return '${textoExibicao.substring(0, 10)}...';
+    }
+    return textoExibicao;
+  }
+
+  // Retorna a string completa para ser exibida no Tooltip (Hover)
+  String _obterLocalCompleto() {
+    String local = consulta['local'] ?? 'Local';
+    String descricao = consulta['descricaoLocal'] ?? '';
+    return (local.toUpperCase() == 'OUTRO' && descricao.isNotEmpty) ? descricao : local;
+  }
 
   String _formatarCabecalho() {
     String dataCompleta = consulta['dataHora'] ?? '';
-    String local = consulta['local'] ?? 'Local';
-
-    String localFormatado = local.isNotEmpty
-        ? local[0].toUpperCase() + local.substring(1).toLowerCase()
-        : '';
+    String localExibicao = _formatarLocalOuDescricao();
 
     if (dataCompleta.length >= 16) {
       String mes = dataCompleta.substring(5, 7);
       String dia = dataCompleta.substring(8, 10);
       String hora = dataCompleta.substring(11, 16);
-      return '$localFormatado - $dia/$mes $hora';
+      return '$localExibicao - $dia/$mes $hora';
     }
-    return '$localFormatado - Data inválida';
+    return '$localExibicao - Data inválida';
   }
 
   @override
@@ -44,9 +70,15 @@ class DetalhesScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Text(
-                  _formatarCabecalho(),
-                  style: const TextStyle(fontSize: 26, color: Colors.black87, fontWeight: FontWeight.w500),
+                // O Tooltip mostra a string completa quando segurado ou no hover
+                child: Tooltip(
+                  message: _obterLocalCompleto(),
+                  triggerMode: TooltipTriggerMode.tap, // Permite abrir com um clique no celular
+                  showDuration: const Duration(seconds: 3), // Tempo que a mensagem fica visível
+                  child: Text(
+                    _formatarCabecalho(),
+                    style: const TextStyle(fontSize: 26, color: Colors.black87, fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
               const SizedBox(height: 36),

@@ -1,10 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:agenda/services/consulta_service.dart';
 
-class EditarConsulta extends StatefulWidget {
-  // Recebe os dados da consulta que veio da tela de Detalhes
-  final Map<String, dynamic> consulta;
+// --- FORMATADOR DE MOEDA (DE TRÁS PARA FRENTE) ---
+class MoneyInputFormatter extends TextInputFormatter {
+  final NumberFormat _formatter = NumberFormat.currency(locale: 'pt_BR', symbol: '');
 
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) return newValue.copyWith(text: '');
+
+    String numbersOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (numbersOnly.isEmpty) return newValue.copyWith(text: '');
+
+    double value = double.parse(numbersOnly) / 100;
+    String newText = _formatter.format(value).trim();
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+  }
+}
+
+class EditarConsulta extends StatefulWidget {
+  final Map<String, dynamic> consulta;
   const EditarConsulta({super.key, required this.consulta});
 
   @override
@@ -13,46 +35,85 @@ class EditarConsulta extends StatefulWidget {
 
 class _EditarConsultaState extends State<EditarConsulta> {
   late TextEditingController _nomeController;
-  late TextEditingController _telefoneController;
-  late TextEditingController _localController;
+  late TextEditingController _descricaoLocalController;
   late TextEditingController _horarioController;
   late TextEditingController _valorController;
   late TextEditingController _motivoController;
+  late TextEditingController _telefoneController;
 
   final ConsultaService _consultaService = ConsultaService();
   bool _isSaving = false;
 
   late String _comoConheceu;
   late String _tipo;
-  late String _dataOriginal; // Para manter a mesma data ao atualizar
+  late String _local;
+  late String _dataOriginal;
+
+  // --- MÁSCARA DE TELEFONE ---
+  final _telefoneMask = MaskTextInputFormatter(
+    mask: '+55 (##) #####-####',
+    filter: {"#": RegExp(r'[0-9]')},
+    type: MaskAutoCompletionType.lazy,
+  );
 
   @override
   void initState() {
     super.initState();
-    // Inicializa os campos com os dados que vieram da consulta
     _nomeController = TextEditingController(text: widget.consulta['nomePaciente'] ?? '');
-    _telefoneController = TextEditingController(text: widget.consulta['telefonePaciente'] ?? '');
-    _localController = TextEditingController(text: widget.consulta['local'] ?? '');
     _motivoController = TextEditingController(text: widget.consulta['motivoContato'] ?? '');
+    _descricaoLocalController = TextEditingController(text: widget.consulta['descricaoLocal'] ?? '');
 
-    // Trata o Horário e a Data
+    String tel = widget.consulta['telefonePaciente'] ?? '';
+    _telefoneController = TextEditingController(text: tel);
+
     _dataOriginal = widget.consulta['dataHora'] ?? '';
     String horario = '12:00';
     if (_dataOriginal.contains('T')) {
-      horario = _dataOriginal.split('T')[1].substring(0, 5); // Pega apenas HH:mm
+      horario = _dataOriginal.split('T')[1].substring(0, 5);
     }
     _horarioController = TextEditingController(text: horario);
 
-    // Trata o Valor (converte de double para String com vírgula)
-    double valor = widget.consulta['valor'] ?? 0.0;
-    _valorController = TextEditingController(text: valor.toStringAsFixed(2).replaceAll('.', ','));
+    double valorNumerico = widget.consulta['valor'] ?? 0.0;
+    String valorInicial = NumberFormat.currency(locale: 'pt_BR', symbol: '').format(valorNumerico).trim();
+    _valorController = TextEditingController(text: valorInicial);
 
-    // Trata os Enums da API (converte de UPPERCASE para o formato visualizado na tela)
     _comoConheceu = _formatarEnumParaUI(widget.consulta['comoConheceu'] ?? 'INSTAGRAM');
     _tipo = _formatarEnumParaUI(widget.consulta['tipo'] ?? 'CONSULTA');
+
+    String localSalvo = widget.consulta['local'] ?? 'GASPAR';
+    _local = _formatarEnumParaUI(localSalvo);
+    if (!['Gaspar', 'Blumenau', 'Outro'].contains(_local)) {
+      _local = 'Outro';
+    }
   }
 
-  // Função auxiliar para arrumar o nome na AppBar ("João Silva - 03/04")
+  Future<void> _selecionarHorario() async {
+    final List<String> partes = _horarioController.text.split(':');
+    final TimeOfDay horarioAtual = TimeOfDay(
+      hour: int.tryParse(partes[0]) ?? 12,
+      minute: int.tryParse(partes[1]) ?? 0,
+    );
+
+    final TimeOfDay? selecionado = await showTimePicker(
+      context: context,
+      initialTime: horarioAtual,
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (selecionado != null) {
+      setState(() {
+        final String horaFormatada = selecionado.hour.toString().padLeft(2, '0');
+        final String minutoFormatado = selecionado.minute.toString().padLeft(2, '0');
+        _horarioController.text = '$horaFormatada:$minutoFormatado';
+      });
+    }
+  }
+
   String _gerarTituloAppBar() {
     String nome = widget.consulta['nomePaciente'] ?? 'Editar';
     String primeiroNome = nome.split(' ')[0];
@@ -71,7 +132,6 @@ class _EditarConsultaState extends State<EditarConsulta> {
     return '$primeiroNome$dataFormatada';
   }
 
-  // Auxiliares para converter Enums entre UI e API
   String _formatarEnumParaUI(String valorAPI) {
     if (valorAPI == 'RECOMENDACAO') return 'Recomendação';
     if (valorAPI.isEmpty) return 'Outros';
@@ -106,7 +166,13 @@ class _EditarConsultaState extends State<EditarConsulta> {
           children: [
             _buildTextField('Nome Completo', _nomeController),
             const SizedBox(height: 16),
-            _buildTextField('Telefone', _telefoneController),
+            _buildTextField(
+                'Telefone',
+                _telefoneController,
+                keyboardType: TextInputType.phone,
+                inputFormatters: [_telefoneMask],
+                hintText: '+55 (00) 00000-0000'
+            ),
             const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,14 +197,25 @@ class _EditarConsultaState extends State<EditarConsulta> {
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _buildTextField('Local', _localController)),
+                Expanded(child: _buildDropdownLocal()),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Horário', _horarioController)),
+                Expanded(child: _buildTimePickerField()),
               ],
             ),
+            if (_local == 'Outro') ...[
+              const SizedBox(height: 16),
+              _buildTextField('Descrição do Local (Ex: Clínica no Centro)', _descricaoLocalController),
+            ],
             const SizedBox(height: 16),
-            _buildTextField('Valor', _valorController),
+            _buildTextField(
+                'Valor (R\$)',
+                _valorController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [MoneyInputFormatter()],
+                hintText: '0,00'
+            ),
             const SizedBox(height: 16),
             _buildTextField('Motivo do contato', _motivoController, maxLines: 3),
             const SizedBox(height: 24),
@@ -148,31 +225,56 @@ class _EditarConsultaState extends State<EditarConsulta> {
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                 onPressed: () async {
+                  // --- VALIDAÇÃO 1: LOCAL ---
+                  if (_local == 'Outro' && _descricaoLocalController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, informe a descrição do local.'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+
+                  // --- VALIDAÇÃO 2: TELEFONE ---
+                  String telNumeros = _telefoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+                  // Verifica se tem algo além do '55' (DDI do Brasil)
+                  if (telNumeros.isNotEmpty && telNumeros != '55') {
+                    // 55 + DDD(2) + Num(8 ou 9) = 12 ou 13
+                    if (telNumeros.length != 12 && telNumeros.length != 13) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Telefone inválido. Preencha corretamente ou deixe vazio.'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+                  }
+
                   setState(() { _isSaving = true; });
 
                   String horario = _horarioController.text.trim();
                   if (horario.isEmpty) horario = "12:00";
 
-                  // Reconstrói a data com o horário novo modificado
                   String dataBase = _dataOriginal.contains('T')
                       ? _dataOriginal.split('T')[0]
                       : DateTime.now().toIso8601String().substring(0, 10);
 
+                  double valorNumerico = 0.0;
+                  if (_valorController.text.isNotEmpty) {
+                    String valorLimpo = _valorController.text.replaceAll('.', '').replaceAll(',', '.');
+                    valorNumerico = double.tryParse(valorLimpo) ?? 0.0;
+                  }
+
                   final dadosAtualizados = {
-                    // Note que substituí os valores chumbados pela escolha real do usuário
                     'nomePaciente': _nomeController.text,
-                    'telefonePaciente': _telefoneController.text,
+                    'telefonePaciente': _telefoneController.text.trim().isEmpty || _telefoneController.text == '+55 ' ? '' : _telefoneController.text,
                     'comoConheceu': _formatarUIParaEnum(_comoConheceu),
                     'tipo': _formatarUIParaEnum(_tipo),
-                    'local': _localController.text.toUpperCase(),
-                    'descricaoLocal': widget.consulta['descricaoLocal'] ?? '',
+                    'local': _formatarUIParaEnum(_local),
+                    'descricaoLocal': _local == 'Outro' ? _descricaoLocalController.text : '',
                     'dataHora': '${dataBase}T$horario:00',
-                    'valor': double.tryParse(_valorController.text.replaceAll(',', '.')) ?? 0.0,
+                    'valor': valorNumerico,
                     'motivoContato': _motivoController.text,
-                    'status': widget.consulta['status'], // mantém o status atual
+                    'status': widget.consulta['status'],
                   };
 
-                  final idConsulta = widget.consulta['id']; // Pega o ID (UUID) que vem da API
+                  final idConsulta = widget.consulta['id'];
 
                   final sucesso = await _consultaService.editarConsulta(idConsulta, dadosAtualizados);
 
@@ -182,7 +284,7 @@ class _EditarConsultaState extends State<EditarConsulta> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Consulta atualizada com sucesso!'), backgroundColor: Colors.green),
                     );
-                    Navigator.pop(context, true); // Retorna true para a tela anterior atualizar a lista
+                    Navigator.pop(context, true);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Erro ao atualizar.'), backgroundColor: Colors.red),
@@ -203,8 +305,7 @@ class _EditarConsultaState extends State<EditarConsulta> {
     );
   }
 
-  // --- Widgets _buildTextField e _buildRadioGroup iguais aos do seu NovaConsulta ---
-  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1}) {
+  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType keyboardType = TextInputType.text, List<TextInputFormatter>? inputFormatters, String? hintText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -213,7 +314,11 @@ class _EditarConsultaState extends State<EditarConsulta> {
         TextField(
           controller: controller,
           maxLines: maxLines,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(color: Colors.black38),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -254,6 +359,81 @@ class _EditarConsultaState extends State<EditarConsulta> {
             Text(option, style: const TextStyle(fontSize: 14)),
           ],
         )).toList(),
+      ],
+    );
+  }
+
+  Widget _buildDropdownLocal() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Local', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE0E0E0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _local,
+              isExpanded: true,
+              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+              items: ['Gaspar', 'Blumenau', 'Outro'].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value, style: const TextStyle(fontSize: 15)),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _local = newValue;
+                    if (_local != 'Outro') {
+                      _descricaoLocalController.clear();
+                    }
+                  });
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimePickerField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Horário', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _horarioController,
+          readOnly: true,
+          onTap: _selecionarHorario,
+          style: const TextStyle(fontSize: 15),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            suffixIcon: const Icon(Icons.access_time, color: Colors.grey, size: 20),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF0D6EFD)),
+            ),
+          ),
+        ),
       ],
     );
   }

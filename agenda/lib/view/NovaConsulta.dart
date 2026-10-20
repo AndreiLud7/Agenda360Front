@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:agenda/view/home_screen.dart';
 import 'package:agenda/services/consulta_service.dart';
-class NovaConsulta extends StatefulWidget {
-  // 1. Criamos a variável que vai receber a data da tela anterior
-  final DateTime dataEscolhida;
 
-  // 2. Avisamos que ela é "required" (obrigatória) para abrir a tela
+// --- FORMATADOR DE MOEDA (DE TRÁS PARA FRENTE) ---
+class MoneyInputFormatter extends TextInputFormatter {
+  final NumberFormat _formatter = NumberFormat.currency(locale: 'pt_BR', symbol: '');
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) return newValue.copyWith(text: '');
+
+    String numbersOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (numbersOnly.isEmpty) return newValue.copyWith(text: '');
+
+    double value = double.parse(numbersOnly) / 100;
+    String newText = _formatter.format(value).trim();
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+  }
+}
+
+class NovaConsulta extends StatefulWidget {
+  final DateTime dataEscolhida;
   const NovaConsulta({super.key, required this.dataEscolhida});
 
   @override
@@ -14,16 +36,53 @@ class NovaConsulta extends StatefulWidget {
 
 class _NovaConsultaState extends State<NovaConsulta> {
   final _nomeController = TextEditingController();
-  final _telefoneController = TextEditingController();
-  final _localController = TextEditingController();
+  final _descricaoLocalController = TextEditingController();
   final _horarioController = TextEditingController(text: '12:00');
   final _valorController = TextEditingController();
   final _motivoController = TextEditingController();
+
+  final _telefoneController = TextEditingController();
+
   final ConsultaService _consultaService = ConsultaService();
   bool _isSaving = false;
 
   String _comoConheceu = 'Instagram';
   String _tipo = 'Terapia';
+  String _local = 'Gaspar';
+
+  // --- MÁSCARA DE TELEFONE ---
+  final _telefoneMask = MaskTextInputFormatter(
+    mask: '+55 (##) #####-####',
+    filter: {"#": RegExp(r'[0-9]')},
+    type: MaskAutoCompletionType.lazy,
+  );
+
+  Future<void> _selecionarHorario() async {
+    final List<String> partes = _horarioController.text.split(':');
+    final TimeOfDay horarioAtual = TimeOfDay(
+      hour: int.tryParse(partes[0]) ?? 12,
+      minute: int.tryParse(partes[1]) ?? 0,
+    );
+
+    final TimeOfDay? selecionado = await showTimePicker(
+      context: context,
+      initialTime: horarioAtual,
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (selecionado != null) {
+      setState(() {
+        final String horaFormatada = selecionado.hour.toString().padLeft(2, '0');
+        final String minutoFormatado = selecionado.minute.toString().padLeft(2, '0');
+        _horarioController.text = '$horaFormatada:$minutoFormatado';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +109,13 @@ class _NovaConsultaState extends State<NovaConsulta> {
           children: [
             _buildTextField('Nome Completo', _nomeController),
             const SizedBox(height: 16),
-            _buildTextField('Telefone', _telefoneController),
+            _buildTextField(
+                'Telefone',
+                _telefoneController,
+                keyboardType: TextInputType.phone,
+                inputFormatters: [_telefoneMask],
+                hintText: '+55 (00) 00000-0000'
+            ),
             const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,14 +140,25 @@ class _NovaConsultaState extends State<NovaConsulta> {
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _buildTextField('Local', _localController)),
+                Expanded(child: _buildDropdownLocal()),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Horário', _horarioController)),
+                Expanded(child: _buildTimePickerField()),
               ],
             ),
+            if (_local == 'Outro') ...[
+              const SizedBox(height: 16),
+              _buildTextField('Descrição do Local (Ex: Clínica no Centro)', _descricaoLocalController),
+            ],
             const SizedBox(height: 16),
-            _buildTextField('Valor', _valorController),
+            _buildTextField(
+                'Valor (R\$)',
+                _valorController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [MoneyInputFormatter()],
+                hintText: '0,00'
+            ),
             const SizedBox(height: 16),
             _buildTextField('Motivo do contato', _motivoController, maxLines: 3),
             const SizedBox(height: 24),
@@ -92,11 +168,29 @@ class _NovaConsultaState extends State<NovaConsulta> {
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                 onPressed: () async {
+                  // --- VALIDAÇÃO 1: LOCAL ---
+                  if (_local == 'Outro' && _descricaoLocalController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, informe a descrição do local.'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+
+                  // --- VALIDAÇÃO 2: TELEFONE ---
+                  String telNumeros = _telefoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (telNumeros.isNotEmpty && telNumeros != '55') {
+                    if (telNumeros.length != 12 && telNumeros.length != 13) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Telefone inválido. Preencha corretamente ou deixe vazio.'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+                  }
+
                   setState(() { _isSaving = true; });
                   String horario = _horarioController.text.trim();
                   if (horario.isEmpty) horario = "12:00";
 
-                  // 1. Define o status inicial correto baseado no tipo escolhido
                   String statusInicial;
                   if (_tipo == 'Consulta') {
                     statusInicial = 'CONSULTA_MARCADA';
@@ -106,18 +200,23 @@ class _NovaConsultaState extends State<NovaConsulta> {
                     statusInicial = 'RETORNO_MARCADO';
                   }
 
-                  // 2. Monta o payload usando as variáveis do estado em vez de strings fixas
+                  double valorNumerico = 0.0;
+                  if (_valorController.text.isNotEmpty) {
+                    String valorLimpo = _valorController.text.replaceAll('.', '').replaceAll(',', '.');
+                    valorNumerico = double.tryParse(valorLimpo) ?? 0.0;
+                  }
+
                   final dados = {
                     'nomePaciente': _nomeController.text,
-                    'telefonePaciente': _telefoneController.text,
-                    'comoConheceu': _comoConheceu.toUpperCase(), // Pega a seleção real
-                    'tipo': _tipo.toUpperCase(),                 // Pega a seleção real
-                    'local': _localController.text.toUpperCase(),
-                    'descricaoLocal': '',
+                    'telefonePaciente': _telefoneController.text.trim().isEmpty || _telefoneController.text == '+55 ' ? '' : _telefoneController.text,
+                    'comoConheceu': _comoConheceu.toUpperCase(),
+                    'tipo': _tipo.toUpperCase(),
+                    'local': _local.toUpperCase(),
+                    'descricaoLocal': _local == 'Outro' ? _descricaoLocalController.text : '',
                     'dataHora': '${widget.dataEscolhida.toIso8601String().substring(0, 10)}T$horario:00',
-                    'valor': double.tryParse(_valorController.text.replaceAll(',', '.')) ?? 0.0,
+                    'valor': valorNumerico,
                     'motivoContato': _motivoController.text,
-                    'status': statusInicial,                     // Usa a regra dinâmica criada acima
+                    'status': statusInicial,
                   };
 
                   final sucesso = await _consultaService.salvarConsulta(dados);
@@ -170,7 +269,7 @@ class _NovaConsultaState extends State<NovaConsulta> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1}) {
+  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType keyboardType = TextInputType.text, List<TextInputFormatter>? inputFormatters, String? hintText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -179,7 +278,11 @@ class _NovaConsultaState extends State<NovaConsulta> {
         TextField(
           controller: controller,
           maxLines: maxLines,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(color: Colors.black38),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -220,6 +323,81 @@ class _NovaConsultaState extends State<NovaConsulta> {
             Text(option, style: const TextStyle(fontSize: 14)),
           ],
         )).toList(),
+      ],
+    );
+  }
+
+  Widget _buildDropdownLocal() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Local', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE0E0E0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _local,
+              isExpanded: true,
+              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+              items: ['Gaspar', 'Blumenau', 'Outro'].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value, style: const TextStyle(fontSize: 15)),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _local = newValue;
+                    if (_local != 'Outro') {
+                      _descricaoLocalController.clear();
+                    }
+                  });
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimePickerField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Horário', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _horarioController,
+          readOnly: true,
+          onTap: _selecionarHorario,
+          style: const TextStyle(fontSize: 15),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            suffixIcon: const Icon(Icons.access_time, color: Colors.grey, size: 20),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF0D6EFD)),
+            ),
+          ),
+        ),
       ],
     );
   }
