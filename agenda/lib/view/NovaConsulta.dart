@@ -96,22 +96,30 @@ class _NovaConsultaState extends State<NovaConsulta> {
                   String horario = _horarioController.text.trim();
                   if (horario.isEmpty) horario = "12:00";
 
+                  // 1. Define o status inicial correto baseado no tipo escolhido
+                  String statusInicial;
+                  if (_tipo == 'Consulta') {
+                    statusInicial = 'CONSULTA_MARCADA';
+                  } else if (_tipo == 'Terapia') {
+                    statusInicial = 'TERAPIA_MARCADA';
+                  } else {
+                    statusInicial = 'RETORNO_MARCADO';
+                  }
+
+                  // 2. Monta o payload usando as variáveis do estado em vez de strings fixas
                   final dados = {
                     'nomePaciente': _nomeController.text,
                     'telefonePaciente': _telefoneController.text,
-                    'comoConheceu': 'INSTAGRAM',
-                    'tipo': 'CONSULTA',
-
+                    'comoConheceu': _comoConheceu.toUpperCase(), // Pega a seleção real
+                    'tipo': _tipo.toUpperCase(),                 // Pega a seleção real
                     'local': _localController.text.toUpperCase(),
                     'descricaoLocal': '',
-
-
                     'dataHora': '${widget.dataEscolhida.toIso8601String().substring(0, 10)}T$horario:00',
-
                     'valor': double.tryParse(_valorController.text.replaceAll(',', '.')) ?? 0.0,
                     'motivoContato': _motivoController.text,
-                    'status': 'CONSULTA_MARCADA',
+                    'status': statusInicial,                     // Usa a regra dinâmica criada acima
                   };
+
                   final sucesso = await _consultaService.salvarConsulta(dados);
                   setState(() { _isSaving = false; });
 

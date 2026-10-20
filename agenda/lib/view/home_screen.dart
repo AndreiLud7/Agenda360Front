@@ -3,6 +3,7 @@ import 'package:agenda/view/NovaConsulta.dart';
 import 'package:agenda/services/consulta_service.dart';
 import 'package:agenda/view/detalhes_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
+import 'package:agenda/view/atestado_screen.dart';
 
 import 'clientes_screen.dart';
 class HomeScreen extends StatefulWidget {
@@ -149,7 +150,10 @@ class _HomeScreenState extends State<HomeScreen> {
           } else if (index == 2) {
             // Adicione esta condição para abrir a tela de Clientes!
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
-          }
+          } else if (index == 4) {
+        // Nova condição para abrir a tela de Atestado
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const AtestadoScreen()));
+  }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

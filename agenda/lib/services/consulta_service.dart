@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:typed_data';
 
 class ConsultaService {
   static const String baseUrl = 'http://10.0.2.2:8080/v1/consultas';
@@ -71,6 +72,22 @@ class ConsultaService {
     } catch (e) {
       print('Erro de conexão ao finalizar: $e');
       return false;
+    }
+  }
+
+  Future<Uint8List?> baixarAtestado(String id) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/$id/atestado'));
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes; // Retorna os bytes do PDF
+      } else {
+        print('Erro ao baixar atestado: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Erro de conexão ao baixar atestado: $e');
+      return null;
     }
   }
 }
