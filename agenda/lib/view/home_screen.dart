@@ -115,13 +115,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       return const Center(child: Text('Nenhuma consulta agendada.', style: TextStyle(fontSize: 18, color: Colors.black54)));
                     }
 
-                    // --- FILTRAGEM POR DIA E POR STATUS (APENAS MARCADA/MARCADO) ---
+                    // --- FILTRAGEM E ORDENAÇÃO POR HORÁRIO ---
                     final todasConsultas = snapshot.data!;
                     final listaConsultas = todasConsultas.where((consulta) {
                       String dataHoraStr = consulta['dataHora'] ?? '';
                       String status = (consulta['status'] ?? '').toString().toUpperCase();
 
-                      // Filtra apenas se o status contiver "MARCADA" ou "MARCADO"
                       bool ehMarcada = status.contains('MARCADA') || status.contains('MARCADO');
 
                       if (dataHoraStr.length >= 10 && ehMarcada) {
@@ -136,6 +135,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                       return false;
                     }).toList();
+
+                    // Ordena a lista do horário mais cedo para o mais tarde (crescente)
+                    listaConsultas.sort((a, b) {
+                      String dataA = a['dataHora'] ?? '';
+                      String dataB = b['dataHora'] ?? '';
+                      return dataA.compareTo(dataB);
+                    });
 
                     if (listaConsultas.isEmpty) {
                       return const Center(
