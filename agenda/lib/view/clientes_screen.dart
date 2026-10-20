@@ -15,6 +15,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
   // Variáveis para guardar o que o usuário quer filtrar
   String _nomeBusca = '';
   String _tipoFiltro = 'Todos';
+  String _statusFiltro = 'Todos'; // Novo filtro de status
 
   // Controlador para ler o que for digitado no campo de texto
   final TextEditingController _buscaController = TextEditingController();
@@ -38,20 +39,35 @@ class _ClientesScreenState extends State<ClientesScreen> {
     return texto[0].toUpperCase() + texto.substring(1);
   }
 
-  // Nova lógica de filtro: verifica o Nome e o Tipo ao mesmo tempo
+  // Define a cor baseada no status
+  Color _corDoStatus(String statusCru) {
+    String status = statusCru.toUpperCase();
+    if (status.contains('CANCELADA') || status.contains('CANCELADO')) {
+      return Colors.red;
+    } else if (status.contains('MARCADA') || status.contains('MARCADO')) {
+      return const Color(0xFF0D6EFD); // Azul
+    }
+    return Colors.black54; // Cor padrão para finalizados ou outros
+  }
+
+  // Lógica de filtro atualizada: verifica Nome, Tipo e Status ao mesmo tempo
   List<dynamic> _filtrarLista(List<dynamic> todosClientes) {
     return todosClientes.where((cliente) {
       String nome = (cliente['nomePaciente'] ?? '').toString().toLowerCase();
       String tipo = (cliente['tipo'] ?? '').toString().toUpperCase();
+      String status = (cliente['status'] ?? '').toString().toUpperCase();
 
       // Regra 1: O nome digitado está contido no nome do paciente?
       bool passaNome = _nomeBusca.isEmpty || nome.contains(_nomeBusca.toLowerCase());
 
-      // Regra 2: O tipo selecionado é igual ao tipo que veio do banco?
+      // Regra 2: O tipo selecionado bate com o tipo?
       bool passaTipo = _tipoFiltro == 'Todos' || tipo == _tipoFiltro.toUpperCase();
 
-      // Só mostra na tela se passar nas duas regras
-      return passaNome && passaTipo;
+      // Regra 3: O status selecionado bate com o status?
+      bool passaStatus = _statusFiltro == 'Todos' || status.contains(_statusFiltro.toUpperCase());
+
+      // Só mostra na tela se passar em todas as regras
+      return passaNome && passaTipo && passaStatus;
     }).toList();
   }
 
@@ -59,74 +75,88 @@ class _ClientesScreenState extends State<ClientesScreen> {
   void _mostrarModalFiltros() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Permite que a aba suba junto com o teclado
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        // O StatefulBuilder é necessário para atualizar apenas o que está dentro do Modal
         return StatefulBuilder(
             builder: (context, setStateModal) {
               return Padding(
                 padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom, // Evita que o teclado cubra os botões
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
                   left: 24,
                   right: 24,
                   top: 24,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min, // Ocupa apenas o tamanho necessário
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Filtrar Clientes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Filtrar Clientes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
 
-                    // 1. Filtro por Nome (Campo de digitação)
-                    TextField(
-                      controller: _buscaController,
-                      decoration: InputDecoration(
-                        labelText: 'Buscar por nome...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onChanged: (valor) {
-                        // Atualiza a tela principal enquanto você digita
-                        setState(() {
-                          _nomeBusca = valor;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // 2. Filtro por Tipo de Atendimento (Botões de escolha)
-                    const Text('Tipo de Atendimento:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        _buildChipOpcao('Todos', setStateModal),
-                        _buildChipOpcao('Consulta', setStateModal),
-                        _buildChipOpcao('Terapia', setStateModal),
-                        _buildChipOpcao('Retorno', setStateModal), // Adicione outros se precisar
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Botão de Fechar
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D6EFD),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      // 1. Filtro por Nome (Campo de digitação)
+                      TextField(
+                        controller: _buscaController,
+                        decoration: InputDecoration(
+                          labelText: 'Buscar por nome...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Aplicar e Fechar', style: TextStyle(color: Colors.white, fontSize: 16)),
+                        onChanged: (valor) {
+                          setState(() {
+                            _nomeBusca = valor;
+                          });
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                      const SizedBox(height: 24),
+
+                      // 2. Filtro por Tipo de Atendimento
+                      const Text('Tipo de Atendimento:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _buildChipTipo('Todos', setStateModal),
+                          _buildChipTipo('Consulta', setStateModal),
+                          _buildChipTipo('Terapia', setStateModal),
+                          _buildChipTipo('Retorno', setStateModal),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 3. Filtro por Status
+                      const Text('Status:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _buildChipStatus('Todos', setStateModal),
+                          _buildChipStatus('Marcada', setStateModal),
+                          _buildChipStatus('Finalizada', setStateModal),
+                          _buildChipStatus('Cancelada', setStateModal),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Botão de Fechar
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D6EFD),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: const Text('Aplicar e Fechar', style: TextStyle(color: Colors.white, fontSize: 16)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               );
             }
@@ -135,8 +165,8 @@ class _ClientesScreenState extends State<ClientesScreen> {
     );
   }
 
-  // Funçãozinha para desenhar as opções do Tipo de Terapia
-  Widget _buildChipOpcao(String label, StateSetter setStateModal) {
+  // Chips para Tipo
+  Widget _buildChipTipo(String label, StateSetter setStateModal) {
     bool isSelected = _tipoFiltro.toUpperCase() == label.toUpperCase();
     return ChoiceChip(
       label: Text(label),
@@ -144,10 +174,35 @@ class _ClientesScreenState extends State<ClientesScreen> {
       onSelected: (selecionado) {
         if (selecionado) {
           setStateModal(() {
-            _tipoFiltro = label; // Atualiza a cor dentro do modal
+            _tipoFiltro = label;
           });
           setState(() {
-            _tipoFiltro = label; // Atualiza a lista lá atrás na tela principal
+            _tipoFiltro = label;
+          });
+        }
+      },
+      selectedColor: const Color(0xFF0D6EFD),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.black87,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      backgroundColor: Colors.white,
+    );
+  }
+
+  // Chips para Status
+  Widget _buildChipStatus(String label, StateSetter setStateModal) {
+    bool isSelected = _statusFiltro.toUpperCase() == label.toUpperCase();
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selecionado) {
+        if (selecionado) {
+          setStateModal(() {
+            _statusFiltro = label;
+          });
+          setState(() {
+            _statusFiltro = label;
           });
         }
       },
@@ -171,7 +226,6 @@ class _ClientesScreenState extends State<ClientesScreen> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
-          // ÍCONE NOVO DE FILTRO AQUI NO TOPO À DIREITA
           IconButton(
             icon: const Icon(Icons.filter_list, color: Color(0xFF0D6EFD), size: 28),
             onPressed: _mostrarModalFiltros,
@@ -205,6 +259,8 @@ class _ClientesScreenState extends State<ClientesScreen> {
               separatorBuilder: (context, index) => const SizedBox(height: 24),
               itemBuilder: (context, index) {
                 final cliente = clientesFiltrados[index];
+                String statusBruto = cliente['status'] ?? '';
+
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -215,9 +271,14 @@ class _ClientesScreenState extends State<ClientesScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    // Texto do status com a cor dinâmica aplicada
                     Text(
-                      _formatarStatus(cliente['status'] ?? ''),
-                      style: const TextStyle(fontSize: 16, color: Colors.black54),
+                      _formatarStatus(statusBruto),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: _corDoStatus(statusBruto), // <-- Cores dinâmicas (Vermelho, Azul ou Padrão)
+                      ),
                     ),
                   ],
                 );

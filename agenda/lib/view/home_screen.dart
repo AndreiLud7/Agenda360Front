@@ -4,8 +4,8 @@ import 'package:agenda/services/consulta_service.dart';
 import 'package:agenda/view/detalhes_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
 import 'package:agenda/view/atestado_screen.dart';
-
 import 'clientes_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -17,17 +17,14 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _dataSelecionada = DateTime.now();
   final _consultaService = ConsultaService();
 
-  // 1. Variável para guardar a requisição
   late Future<List<dynamic>> _futureConsultas;
 
   @override
   void initState() {
     super.initState();
-    // 2. Carrega as consultas quando a tela abre pela primeira vez
     _carregarConsultas();
   }
 
-  // 3. Método para forçar o recarregamento da API
   void _carregarConsultas() {
     setState(() {
       _futureConsultas = _consultaService.buscarConsultas();
@@ -56,8 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _dataSelecionada = dataEscolhida;
       });
-      // Se quiser que ao mudar a data ele recarregue da API, chame aqui:
-      // _carregarConsultas();
     }
   }
 
@@ -106,7 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 40),
               Expanded(
                 child: FutureBuilder<List<dynamic>>(
-                  // 4. Usa a variável em vez de chamar direto no build
                   future: _futureConsultas,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -121,7 +115,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       return const Center(child: Text('Nenhuma consulta agendada.', style: TextStyle(fontSize: 18, color: Colors.black54)));
                     }
 
-                    final listaConsultas = snapshot.data!;
+                    // --- FILTRAGEM POR DIA E POR STATUS (APENAS MARCADA/MARCADO) ---
+                    final todasConsultas = snapshot.data!;
+                    final listaConsultas = todasConsultas.where((consulta) {
+                      String dataHoraStr = consulta['dataHora'] ?? '';
+                      String status = (consulta['status'] ?? '').toString().toUpperCase();
+
+                      // Filtra apenas se o status contiver "MARCADA" ou "MARCADO"
+                      bool ehMarcada = status.contains('MARCADA') || status.contains('MARCADO');
+
+                      if (dataHoraStr.length >= 10 && ehMarcada) {
+                        try {
+                          DateTime dataConsulta = DateTime.parse(dataHoraStr);
+                          return dataConsulta.year == _dataSelecionada.year &&
+                              dataConsulta.month == _dataSelecionada.month &&
+                              dataConsulta.day == _dataSelecionada.day;
+                        } catch (e) {
+                          return false;
+                        }
+                      }
+                      return false;
+                    }).toList();
+
+                    if (listaConsultas.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Nenhuma consulta ativa para este dia.',
+                          style: TextStyle(fontSize: 18, color: Colors.black54),
+                        ),
+                      );
+                    }
 
                     return ListView.separated(
                       itemCount: listaConsultas.length,
@@ -148,12 +171,10 @@ class _HomeScreenState extends State<HomeScreen> {
           if (index == 1) {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const AgendaScreen()));
           } else if (index == 2) {
-            // Adicione esta condição para abrir a tela de Clientes!
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
           } else if (index == 4) {
-        // Nova condição para abrir a tela de Atestado
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const AtestadoScreen()));
-  }
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const AtestadoScreen()));
+          }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -168,7 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCardConsulta(dynamic consulta) {
     String dataCompleta = consulta['dataHora'] ?? '';
-    // Corrigido para verificar melhor os tamanhos e o formato do Wrapper (caso esteja usando o response novo)
     String horario = '--:--';
     if (dataCompleta.contains('T')) {
       horario = dataCompleta.split('T')[1].substring(0, 5);
@@ -176,9 +196,6 @@ class _HomeScreenState extends State<HomeScreen> {
       horario = dataCompleta.substring(11, 16);
     }
 
-    // Se estiver usando o Wrapper ConsultaResponse, ajuste para:
-    // String nome = consulta['dados'] != null ? consulta['dados']['nomePaciente'] : consulta['nomePaciente'];
-    // String tipo = consulta['dados'] != null ? consulta['dados']['tipo'] : consulta['tipo'];
     String nome = consulta['nomePaciente'] ?? '';
     String tipo = consulta['tipo'] ?? '';
 
@@ -201,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             ElevatedButton(
-              // 5. Adiciona o async e o await aqui
               onPressed: () async {
                 final resultado = await Navigator.push(
                   context,
@@ -210,7 +226,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
 
-                // 6. Se a tela de detalhes retornar true (houve edição/cancelamento), recarrega
                 if (resultado == true) {
                   _carregarConsultas();
                 }
