@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:agenda/view/NovaConsulta.dart'; // Ajuste o caminho se precisar
+import 'package:agenda/view/home_screen.dart';
+import 'package:agenda/view/clientes_screen.dart';
+import 'package:agenda/view/atestado_screen.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key});
@@ -13,6 +16,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hoje = DateTime.now();
+    final primeiroDiaPermitido = DateTime(hoje.year, hoje.month, hoje.day);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -40,8 +46,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: CalendarDatePicker(
-              initialDate: _dataSelecionada,
-              firstDate: DateTime.now(), // Não deixa marcar no passado
+              initialDate: _dataSelecionada.isBefore(primeiroDiaPermitido)
+                  ? primeiroDiaPermitido
+                  : _dataSelecionada,
+              firstDate: primeiroDiaPermitido, // Não deixa marcar no passado
               lastDate: DateTime(2030),
               onDateChanged: (DateTime novaData) {
                 setState(() {
@@ -79,6 +87,29 @@ class _AgendaScreenState extends State<AgendaScreen> {
               ),
             ),
           ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: 1,
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.black54,
+        showUnselectedLabels: true,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+          } else if (index == 2) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
+          } else if (index == 4) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AtestadoScreen()));
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Consultas'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Clientes'),
+          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Financeiro'),
+          BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), label: 'Atestado'),
         ],
       ),
     );

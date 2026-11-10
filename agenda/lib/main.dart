@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 // Atualize o nome do arquivo final na importação caso você também tenha renomeado o arquivo físico
 import 'package:agenda/view/home_screen.dart';
@@ -14,6 +15,13 @@ class MeuApp extends StatelessWidget {
     return MaterialApp(
       title: 'Sistema de Consultas',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.trackpad,
+        },
+      ),
       theme: ThemeData(
         primaryColor: const Color(0xFF0D6EFD),
         useMaterial3: true,
