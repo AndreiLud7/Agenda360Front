@@ -9,6 +9,14 @@ class DetalhesScreen extends StatelessWidget {
 
   DetalhesScreen({super.key, required this.consulta});
 
+  // Formata os valores crus vindos do Enum da API (ex: CONSULTA -> Consulta, RECOMENDACAO -> Recomendação)
+  String _formatarEnum(String? valorCru) {
+    if (valorCru == null || valorCru.isEmpty) return '';
+    if (valorCru.toUpperCase() == 'RECOMENDACAO') return 'Recomendação';
+    String texto = valorCru.replaceAll('_', ' ').toLowerCase();
+    return texto[0].toUpperCase() + texto.substring(1);
+  }
+
   String _formatarLocalOuDescricao() {
     String local = consulta['local'] ?? 'Local';
     String descricao = consulta['descricaoLocal'] ?? '';
@@ -36,7 +44,7 @@ class DetalhesScreen extends StatelessWidget {
   String _obterLocalCompleto() {
     String local = consulta['local'] ?? 'Local';
     String descricao = consulta['descricaoLocal'] ?? '';
-    return (local.toUpperCase() == 'OUTRO' && descricao.isNotEmpty) ? descricao : local;
+    return (local.toUpperCase() == 'OUTRO' && descricao.isNotEmpty) ? descricao : _formatarEnum(local);
   }
 
   String _formatarCabecalho() {
@@ -54,6 +62,9 @@ class DetalhesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double valorNumerico = (consulta['valor'] as num?)?.toDouble() ?? 0.0;
+    final String telefone = (consulta['telefonePaciente'] ?? '').toString().trim();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -85,13 +96,13 @@ class DetalhesScreen extends StatelessWidget {
 
               Text('Nome: ${consulta['nomePaciente'] ?? ''}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
               const SizedBox(height: 6),
-              Text('Tipo: ${consulta['tipo'] ?? ''}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
+              Text('Tipo: ${_formatarEnum(consulta['tipo']?.toString())}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
               const SizedBox(height: 6),
-              Text('Telefone: ${consulta['telefonePaciente'] ?? ''}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
+              Text('Telefone: ${telefone.isNotEmpty ? telefone : 'Não informado'}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
               const SizedBox(height: 6),
-              Text('Como conheceu: ${consulta['comoConheceu'] ?? ''}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
+              Text('Como conheceu: ${_formatarEnum(consulta['comoConheceu']?.toString())}', style: const TextStyle(fontSize: 20, color: Colors.black87)),
               const SizedBox(height: 6),
-              Text('Valor: R\$ ${(consulta['valor'] ?? 0.0).toStringAsFixed(2).replaceAll('.', ',')}',
+              Text('Valor: R\$ ${valorNumerico.toStringAsFixed(2).replaceAll('.', ',')}',
                   style: const TextStyle(fontSize: 20, color: Colors.black87)),
 
               const SizedBox(height: 36),
