@@ -90,4 +90,37 @@ class ConsultaService {
       return null;
     }
   }
+
+  Future<Map<String, dynamic>?> buscarDadosFinanceiro({
+    DateTime? dataInicio,
+    DateTime? dataFim,
+  }) async {
+    try {
+      final Map<String, String> queryParams = {};
+      if (dataInicio != null) {
+        queryParams['dataInicio'] =
+            '${dataInicio.year.toString().padLeft(4, '0')}-${dataInicio.month.toString().padLeft(2, '0')}-${dataInicio.day.toString().padLeft(2, '0')}';
+      }
+      if (dataFim != null) {
+        queryParams['dataFim'] =
+            '${dataFim.year.toString().padLeft(4, '0')}-${dataFim.month.toString().padLeft(2, '0')}-${dataFim.day.toString().padLeft(2, '0')}';
+      }
+
+      final uri = Uri.parse('$baseUrl/financeiro').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      } else {
+        print('Erro ao buscar dados do financeiro: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Erro de conexão ao buscar financeiro: $e');
+      return null;
+    }
+  }
 }

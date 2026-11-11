@@ -3,6 +3,7 @@ import 'package:agenda/view/NovaConsulta.dart'; // Ajuste o caminho se precisar
 import 'package:agenda/view/home_screen.dart';
 import 'package:agenda/view/clientes_screen.dart';
 import 'package:agenda/view/atestado_screen.dart';
+import 'package:agenda/view/financeiro_screen.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key});
@@ -100,6 +101,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
           } else if (index == 2) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
+          } else if (index == 3) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FinanceiroScreen()));
           } else if (index == 4) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AtestadoScreen()));
           }

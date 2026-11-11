@@ -6,6 +6,7 @@ import 'package:agenda/view/home_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
 import 'package:agenda/view/clientes_screen.dart';
 import 'package:agenda/view/atestado_screen.dart';
+import 'package:agenda/view/financeiro_screen.dart';
 import 'package:agenda/services/consulta_service.dart';
 
 // --- FORMATADOR DE MOEDA (DE TRÁS PARA FRENTE) ---
@@ -361,6 +362,8 @@ class _NovaConsultaState extends State<NovaConsulta> {
             Navigator.pop(context);
           } else if (index == 2) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
+          } else if (index == 3) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FinanceiroScreen()));
           } else if (index == 4) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AtestadoScreen()));
           }

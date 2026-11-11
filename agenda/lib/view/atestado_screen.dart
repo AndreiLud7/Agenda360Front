@@ -9,6 +9,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart'; // Pacote do visua
 import 'package:agenda/view/home_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
 import 'package:agenda/view/clientes_screen.dart';
+import 'package:agenda/view/financeiro_screen.dart';
 
 class AtestadoScreen extends StatefulWidget {
   const AtestadoScreen({super.key});
@@ -292,6 +293,8 @@ class _AtestadoScreenState extends State<AtestadoScreen> {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AgendaScreen()));
           } else if (index == 2) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
+          } else if (index == 3) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FinanceiroScreen()));
           }
         },
         items: const [

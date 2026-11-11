@@ -4,6 +4,7 @@ import 'package:agenda/services/consulta_service.dart';
 import 'package:agenda/view/detalhes_screen.dart';
 import 'package:agenda/view/agenda_screen.dart';
 import 'package:agenda/view/atestado_screen.dart';
+import 'package:agenda/view/financeiro_screen.dart';
 import 'clientes_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -178,6 +179,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const AgendaScreen()));
           } else if (index == 2) {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ClientesScreen()));
+          } else if (index == 3) {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const FinanceiroScreen()));
           } else if (index == 4) {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const AtestadoScreen()));
           }
